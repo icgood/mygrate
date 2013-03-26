@@ -19,6 +19,7 @@
 # THE SOFTWARE.
 #
 
+import os
 import cPickle
 from celery import Celery, Task
 
@@ -63,8 +64,8 @@ def INSERT(table, cols):
 
 
 @celery.task(**task_settings)
-def UPDATE(table, cols):
-    callbacks[table].UPDATE(cols)
+def UPDATE(table, from_cols, to_cols):
+    callbacks[table].UPDATE(from_cols, to_cols)
 
 
 @celery.task(**task_settings)
