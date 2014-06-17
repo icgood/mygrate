@@ -53,14 +53,16 @@ class MygrateConfig(object):
         try:
             broker_url = self.parser.get('celery', 'broker_url')
         except (NoSectionError, NoOptionError):
-            raise MygrateConfigError('Please specify the celery::broker_url configuration option.')
+            msg = 'Please specify the celery::broker_url configuration option.'
+            raise MygrateConfigError(msg)
         return broker_url
 
     def get_callbacks(self):
         try:
             callbacks = self.parser.options('callbacks')
         except (NoSectionError):
-            raise MygrateConfigError('Configuration section `callbacks` required.')
+            msg = 'Configuration section `callbacks` required.'
+            raise MygrateConfigError(msg)
         ret = {}
         for opt_name in callbacks:
             mod = self.parser.get('callbacks', opt_name)
@@ -105,7 +107,8 @@ class MygrateConfig(object):
                 pass
         tracking_dir = os.path.expanduser(tracking_dir)
         if not os.path.isdir(tracking_dir):
-            raise MygrateConfigError('Tracking directory does not exist: '+tracking_dir)
+            msg = 'Tracking directory does not exist: '+tracking_dir
+            raise MygrateConfigError(msg)
         return tracking_dir
 
     def get_errors_log_file(self):

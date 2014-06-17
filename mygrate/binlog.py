@@ -84,10 +84,10 @@ class QueryBase(object):
 
     def __repr__(self):
         return '<Query {0} {1} WHERE={2!s} SET={3!s}>'.format(
-                self.type,
-                self.table,
-                self.values['WHERE'],
-                self.values['SET'])
+            self.type,
+            self.table,
+            self.values['WHERE'],
+            self.values['SET'])
 
 
 class InsertQuery(QueryBase):
@@ -205,7 +205,8 @@ class QueryParser(object):
 class BinlogParser(object):
 
     def __init__(self, index_file, pos_dir, callbacks, column_names=None,
-                       char_sets=None):
+                 char_sets=None):
+        self.done = False
         self.index_file = index_file
         self.pos_dir = pos_dir
         self.callbacks = callbacks
@@ -216,9 +217,10 @@ class BinlogParser(object):
     def _load_one_table_names(self, conn, db, table):
         cur = conn.cursor()
         try:
-            cur.execute("""SELECT `COLUMN_NAME` FROM 
-                    `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA`=%s AND
-                    `TABLE_NAME`=%s""", (db, table))
+            cur.execute("""SELECT `COLUMN_NAME` FROM
+                           `INFORMATION_SCHEMA`.`COLUMNS`
+                           WHERE `TABLE_SCHEMA`=%s AND `TABLE_NAME`=%s""",
+                        (db, table))
             return [row[0] for row in cur.fetchall()]
         finally:
             cur.close()
@@ -245,11 +247,11 @@ class BinlogParser(object):
         cur = conn.cursor()
         try:
             cur.execute("""SELECT `CCSA`.`CHARACTER_SET_NAME` FROM
-                    `INFORMATION_SCHEMA`.`TABLES` `T`,
-                    `INFORMATION_SCHEMA`.`COLLATION_CHARACTER_SET_APPLICABILITY` `CCSA`
-                    WHERE `CCSA`.`COLLATION_NAME` = `T`.`TABLE_COLLATION`
-                    AND `T`.`TABLE_SCHEMA` = %s
-                    AND `T`.`TABLE_NAME` = %s""", (db, table))
+`INFORMATION_SCHEMA`.`TABLES` `T`,
+`INFORMATION_SCHEMA`.`COLLATION_CHARACTER_SET_APPLICABILITY` `CCSA`
+WHERE `CCSA`.`COLLATION_NAME` = `T`.`TABLE_COLLATION`
+AND `T`.`TABLE_SCHEMA` = %s
+AND `T`.`TABLE_NAME` = %s""", (db, table))
             row = cur.fetchone()
             return row[0] if row else None
         finally:
@@ -303,7 +305,6 @@ class BinlogParser(object):
         f.truncate()
         f.write(pos)
         f.flush()
-        #os.fsync(f.fileno())
 
     def read_index(self):
         """Reads the known binlog file paths from the binlog index file, which
@@ -341,11 +342,10 @@ class BinlogParser(object):
         :param binlog: The path to the binlog file.
 
         """
-        global done
         p = QueryParser(self.callbacks, self.column_names, self.char_sets)
-    
+
         pos_file = self.build_pos_file(binlog)
-    
+
         last_position = self.read_position(pos_file)
         print 'processing', binlog, 'from', last_position
         writepos = open(pos_file, 'w')
@@ -356,12 +356,12 @@ class BinlogParser(object):
                 '--set-charset=utf8']
 
         proc = subprocess.Popen(args, stdin=subprocess.PIPE,
-                                      stdout=subprocess.PIPE)
+                                stdout=subprocess.PIPE)
         proc.stdin.close()
-    
+
         try:
             for line in proc.stdout:
-                if done:
+                if self.done:
                     break
                 if line.startswith('### '):
                     p.parse(line[4:].rstrip('\r\n'))
@@ -383,10 +383,9 @@ class BinlogParser(object):
         since the last sweep.
 
         """
-        global done
         binlogs = self.read_index()
         for binlog in binlogs:
-            if not done:
+            if not self.done:
                 old_mtime = self.binlog_mtimes.get(binlog, 0.0)
                 self.binlog_mtimes[binlog] = float(os.path.getmtime(binlog))
                 if old_mtime < self.binlog_mtimes[binlog]:
@@ -400,7 +399,7 @@ class BinlogParser(object):
 
         """
         pos_file = self.build_pos_file(binlog)
-    
+
         old_pos = self.read_position(pos_file)
         binlog_size = os.path.getsize(binlog)
         with open(pos_file, 'w') as f:
@@ -423,7 +422,7 @@ def confirm_skip_existing():
 
 def skip_existing():
     """This function is declared as the entry point for the
-    `spmigrate-skipexisting` command.
+    `mygrate-skip` command.
 
     """
     description = """\
@@ -452,46 +451,41 @@ MYGRATE_CONFIG environment variable.
         parser.set_binlogpos_at_end(binlog)
 
 
-done = False
-def graceful_quit(sig, frame):
-    global done
-    done = True
-
-
 def main():
     """This function is declared the entry point for the
-    `spmigrate-binlog` command.
+    `mygrate-binlog` command.
 
     """
     description = """\
 This program follows changes in the MySQL binlog, producing job tasks for each
-change. It is intended to be long-running, and will briefly pause after catching
-up each binlog before checking for new changes.
+change. It is intended to be long-running, and will briefly pause after
+catching up each binlog before checking for new changes.
 
 Configuration for %prog is done with configuration files. This is either
-/etc/spmigrate.ini, ~/.spmigrate.ini, or an alternative specified by the
-SPMIGRATE_CONFIG environment variable.
+/etc/mygrate.ini, ~/.mygrate.ini, or an alternative specified by the
+MYGRATE_CONFIG environment variable.
 """
     op = optparse.OptionParser(description=description)
     op.parse_args()
-
-    global done
-
-    signal.signal(signal.SIGINT, graceful_quit)
-    signal.signal(signal.SIGTERM, graceful_quit)
 
     tracking_dir = cfg.get_tracking_dir()
     binlog_index, tracking_delay = cfg.get_mysql_binlog_info()
     callbacks = cfg.get_callbacks()
     parser = BinlogParser(binlog_index, tracking_dir, callbacks)
 
+    def graceful_quit(sig, frame):
+        parser.done = True
+
+    signal.signal(signal.SIGINT, graceful_quit)
+    signal.signal(signal.SIGTERM, graceful_quit)
+
     mysql_info = cfg.get_mysql_connection_info()
     parser.load_column_names(mysql_info)
     parser.load_character_sets(mysql_info)
 
-    while not done:
+    while not parser.done:
         parser.process_all_binlogs()
-        if not done:
+        if not parser.done:
             sleep(tracking_delay)
 
 

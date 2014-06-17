@@ -35,7 +35,7 @@ from .config import cfg
 class InitialQuery(object):
     """Manages direct queries to MySQL for importing, validation, and
     re-validation.
-    
+
     """
 
     def __init__(self, mysql_info, callbacks, action='INSERT'):
@@ -108,8 +108,8 @@ Configuration for %prog is done with configuration files. This is either
 /etc/mygrate.conf, ~/.mygrate.conf, or an alternative specified by the
 MYGRATE_CONFIG environment variable.
 """
-    op = optparse.OptionParser(usage='usage: %prog [options] <database>.<table> ...',
-                               description=description)
+    usage = 'usage: %prog [options] <database>.<table> ...'
+    op = optparse.OptionParser(usage=usage, description=description)
     options, requested_tables = op.parse_args()
     if not requested_tables:
         op.error('Must supply at least one database and table.')
