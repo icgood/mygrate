@@ -76,7 +76,9 @@ class MygrateCallbacks(object):
         """Executes the callback registered to the given table and action. If
         no callback has been registered, nothing is executed.
 
-        :param table: The table to execute the callback for.
+        :param table: The table to execute the callback for. This table is
+                      passed in as the first positional argument to the
+                      callback.
         :param action: The action to execute the callback for.
         :param args: The positional arguments to pass in to the callback.
         :param kwargs: The keyword arguments to pass in to the callback.
@@ -87,7 +89,7 @@ class MygrateCallbacks(object):
         if action not in self.callbacks[table]:
             return
         callback = self.callbacks[table][action]
-        callback(*args, **kwargs)
+        callback(table, *args, **kwargs)
 
 
 # vim:et:fdm=marker:sts=4:sw=4:ts=4
