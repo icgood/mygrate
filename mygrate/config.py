@@ -58,7 +58,7 @@ class MygrateConfig(object):
             raise MygrateConfigError(msg)
         ret = MygrateCallbacks()
         for table in section:
-            mod_name = self.parser.get('callbacks', opt_name)
+            mod_name = self.parser.get('callbacks', table)
             mod = __import__(mod_name)
             ret.register_module(table, mod)
         return ret
@@ -79,9 +79,9 @@ class MygrateConfig(object):
 
     def get_mysql_binlog_info(self):
         try:
-            index_file = self.parser.get('mysql', 'binlog_index')
+            index_file = self.parser.get('binlog', 'index_file')
         except (NoSectionError, NoOptionError):
-            index_file = '/var/log/mysql/mysql-bin.index'
+            index_file = '/var/lib/mysql/mysql-bin.index'
         if not os.path.exists(index_file):
             raise MygrateConfigError('Invalid binlog index file: '+index_file)
         try:
