@@ -24,6 +24,7 @@ import os.path
 from ConfigParser import SafeConfigParser, NoSectionError, NoOptionError
 
 from .exceptions import MygrateError
+from .callbacks import MygrateCallbacks
 
 
 class MygrateConfigError(MygrateError):
@@ -49,24 +50,17 @@ class MygrateConfig(object):
             global_config = '/etc/mygrate.conf'
             return [home_config, global_config]
 
-    def get_celery_info(self):
-        try:
-            broker_url = self.parser.get('celery', 'broker_url')
-        except (NoSectionError, NoOptionError):
-            msg = 'Please specify the celery::broker_url configuration option.'
-            raise MygrateConfigError(msg)
-        return broker_url
-
     def get_callbacks(self):
         try:
-            callbacks = self.parser.options('callbacks')
+            section = self.parser.options('callbacks')
         except (NoSectionError):
             msg = 'Configuration section `callbacks` required.'
             raise MygrateConfigError(msg)
-        ret = {}
-        for opt_name in callbacks:
-            mod = self.parser.get('callbacks', opt_name)
-            ret[opt_name] = __import__(mod)
+        ret = MygrateCallbacks()
+        for table in section:
+            mod_name = self.parser.get('callbacks', opt_name)
+            mod = __import__(mod_name)
+            ret.register_module(table, mod)
         return ret
 
     def get_mysql_connection_info(self):
@@ -91,9 +85,9 @@ class MygrateConfig(object):
         if not os.path.exists(index_file):
             raise MygrateConfigError('Invalid binlog index file: '+index_file)
         try:
-            delay = self.parser.get('binlog', 'tracking_delay')
+            delay = self.parser.getfloat('binlog', 'tracking_delay')
         except (NoSectionError, NoOptionError):
-            delay = '1.0'
+            delay = 1.0
         return index_file, float(delay)
 
     def get_tracking_dir(self):
@@ -110,24 +104,6 @@ class MygrateConfig(object):
             msg = 'Tracking directory does not exist: '+tracking_dir
             raise MygrateConfigError(msg)
         return tracking_dir
-
-    def get_errors_log_file(self):
-        try:
-            errors_log = self.parser.get('celery', 'errors_log')
-        except (NoSectionError, NoOptionError):
-            errors_log = '/dev/null'
-        return errors_log
-
-    def get_retry_settings(self):
-        try:
-            max_retries = int(self.parser.get('celery', 'max_retries'))
-        except (NoSectionError, NoOptionError):
-            max_retries = 3
-        try:
-            retry_delay = int(self.parser.get('celery', 'retry_delay'))
-        except (NoSectionError, NoOptionError):
-            retry_delay = 180
-        return max_retries, retry_delay
 
 
 cfg = MygrateConfig()

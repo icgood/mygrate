@@ -36,7 +36,7 @@ setup(name='mygrate',
               'mygrate-skip = mygrate.binlog:skip_existing'
           ]},
       install_requires=['MySQL-python',
-                        'celery'],
+                        'bitstring'],
       classifiers=['Development Status :: 3 - Alpha',
                    'Intended Audience :: Developers',
                    'Intended Audience :: Information Technology',

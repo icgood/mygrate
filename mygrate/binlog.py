@@ -8,13 +8,115 @@ import subprocess
 import optparse
 import traceback
 import glob
+import time
+from datetime import datetime
 from ast import literal_eval
 from time import sleep
 
 import MySQLdb
+import bitstring
 
-from . import tasks
-from .config import cfg
+
+class ValueParser(object):
+    """The mysqlbinlog command has its own unique way of serializing its
+    various data types to standard output. This class tries several different
+    methods that should cover almost all data types.
+
+    The string formats were obtained by examining sql/log_event.cc from
+    Community MySQL Server version 5.6.10.
+
+    """
+
+    __slots__ = ['line', 'valid', 'value']
+    _int_pattern = re.compile(r'^[-0-9]+ \(([0-9]+)\)$')
+
+    def __init__(self, line):
+        self.line = line
+        self.valid = False
+        self.value = None
+        try:
+            self._try_null()
+            self._try_quoted()
+            self._try_int()
+            self._try_float()
+            self._try_datetime()
+            self._try_time()
+            self._try_date()
+            self._try_bitstring()
+        except StopIteration:
+            self.valid = True
+
+    def _literal_eval(self, data):
+        try:
+            self.value = literal_eval(data)
+        except Exception:
+            pass
+        else:
+            raise StopIteration()
+
+    def _try_null(self):
+        if self.line == 'NULL':
+            raise StopIteration()
+
+    def _try_quoted(self):
+        if self.line[0] != "'" or self.line[-1] != "'":
+            return
+        data = self.line[1:-1].encode('string_escape')
+        self._literal_eval("'{0}'".format(data))
+
+    def _try_int(self):
+        match = self._int_pattern.match(self.line)
+        if not match:
+            return
+        self._literal_eval(match.group(1))
+
+    def _try_float(self):
+        try:
+            self.value = float(self.line)
+        except ValueError:
+            pass
+        else:
+            raise StopIteration()
+
+    def _try_datetime(self):
+        try:
+            self.value = datetime.strptime(self.line, '%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            pass
+        else:
+            raise StopIteration()
+
+    def _try_date(self):
+        try:
+            self.value = datetime.strptime(self.line, '%Y-%m-%d')
+        except ValueError:
+            pass
+        else:
+            raise StopIteration()
+
+    def _try_time(self):
+        try:
+            self.value = time.strptime(self.line, '%H:%M:%S')
+        except ValueError:
+            pass
+        else:
+            raise StopIteration()
+
+    def _try_bitstring(self):
+        if self.line[:2] != "b'" or self.line[-1] != "'":
+            return
+        data = self.line[2:-1]
+        try:
+            bitstr = bitstring.Bits(bin='0b{0}'.format(data))
+        except bitstring.Error:
+            pass
+        else:
+            self.value = bitstr.tobytes()
+            raise StopIteration()
+
+    @classmethod
+    def parse(cls, line):
+        return cls(line).value
 
 
 class QueryBase(object):
@@ -50,18 +152,10 @@ class QueryBase(object):
         self.table = '.'.join(identifiers)
 
     def _parse_value(self, value, char_set):
-        try:
-            literal = literal_eval(value)
-        except Exception:
-            before_space, sep, after_space = value.partition(' ')
-            if sep == ' ':
-                return self._parse_value(before_space, char_set)
-        else:
-            if char_set and isinstance(literal, str):
-                return literal.decode(char_set)
-            else:
-                return literal
-        return None
+        parsed = ValueParser.parse(value)
+        if char_set and isinstance(parsed, str):
+            return parsed.decode(char_set)
+        return parsed
 
     def parse(self, line):
         """Adds the contents of the given line to the current query. The
@@ -105,8 +199,7 @@ class InsertQuery(QueryBase):
         for i, val in enumerate(self.values['SET']):
             key = table_column_names[i]
             set_vals[key] = val
-        callback = getattr(tasks, self.type)
-        callback.delay(self.table, set_vals)
+        self.callbacks.execute(self.table, self.type, set_vals)
 
 
 class UpdateQuery(QueryBase):
@@ -128,8 +221,7 @@ class UpdateQuery(QueryBase):
         for i, val in enumerate(self.values['SET']):
             key = table_column_names[i]
             set_vals[key] = val
-        callback = getattr(tasks, self.type)
-        callback.delay(self.table, where_vals, set_vals)
+        self.callbacks.execute(self.table, self.type, where_vals, set_vals)
 
 
 class DeleteQuery(QueryBase):
@@ -147,8 +239,7 @@ class DeleteQuery(QueryBase):
         for i, val in enumerate(self.values['WHERE']):
             key = table_column_names[i]
             where_vals[key] = val
-        callback = getattr(tasks, self.type)
-        callback.delay(self.table, where_vals)
+        self.callbacks.execute(self.table, self.type, where_vals)
 
 
 class QueryParser(object):
@@ -173,19 +264,16 @@ class QueryParser(object):
         """
         if line.startswith('INSERT'):
             self._handle_completion()
-            query = InsertQuery(line, self.callbacks, self.column_names,
-                                self.char_sets)
-            self.current = query if query.table in self.callbacks else None
+            self.current = InsertQuery(line, self.callbacks, self.column_names,
+                                       self.char_sets)
         elif line.startswith('UPDATE'):
             self._handle_completion()
-            query = UpdateQuery(line, self.callbacks, self.column_names,
-                                self.char_sets)
-            self.current = query if query.table in self.callbacks else None
+            self.current = UpdateQuery(line, self.callbacks, self.column_names,
+                                       self.char_sets)
         elif line.startswith('DELETE'):
             self._handle_completion()
-            query = DeleteQuery(line, self.callbacks, self.column_names,
-                                self.char_sets)
-            self.current = query if query.table in self.callbacks else None
+            self.current = DeleteQuery(line, self.callbacks, self.column_names,
+                                       self.char_sets)
         elif self.current:
             self.current.parse(line)
 
@@ -236,7 +324,7 @@ class BinlogParser(object):
         conn = MySQLdb.connect(**kwargs)
 
         try:
-            for full_table in self.callbacks.keys():
+            for full_table in self.callbacks.get_registered_tables():
                 db, table = full_table.split('.', 1)
                 names = self._load_one_table_names(conn, db, table)
                 self.column_names[full_table] = names
@@ -268,7 +356,7 @@ AND `T`.`TABLE_NAME` = %s""", (db, table))
         conn = MySQLdb.connect(**kwargs)
 
         try:
-            for full_table in self.callbacks.keys():
+            for full_table in self.callbacks.get_registered_tables():
                 db, table = full_table.split('.', 1)
                 charset = self._load_one_table_charset(conn, db, table)
                 self.char_sets[full_table] = charset
@@ -425,6 +513,8 @@ def skip_existing():
     `mygrate-skip` command.
 
     """
+    from .config import cfg
+
     description = """\
 This program calculates the latest binlog positions and creates/modifies the
 tracking files to those positions. Subsequent executions of the binlog parser
@@ -456,6 +546,8 @@ def main():
     `mygrate-binlog` command.
 
     """
+    from .config import cfg
+
     description = """\
 This program follows changes in the MySQL binlog, producing job tasks for each
 change. It is intended to be long-running, and will briefly pause after

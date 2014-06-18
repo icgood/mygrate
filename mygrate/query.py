@@ -28,9 +28,6 @@ import cPickle
 import MySQLdb
 import MySQLdb.cursors
 
-from . import tasks
-from .config import cfg
-
 
 class InitialQuery(object):
     """Manages direct queries to MySQL for importing, validation, and
@@ -50,9 +47,7 @@ class InitialQuery(object):
         :param cols: The column dict containing the row data.
 
         """
-        callback = getattr(tasks, self.action)
-        if table in self.callbacks:
-            callback.delay(table, cols)
+        self.callbacks.execute(table, self.action, cols)
 
     def get_connection(self, db, streaming=True):
         """Creates and returns a connection to the MySQL server and selects the
@@ -100,6 +95,8 @@ class InitialQuery(object):
 
 
 def main():
+    from .config import cfg
+
     description = """\
 This program attempts to import an entire table by creating job tasks for each
 row.
