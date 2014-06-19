@@ -63,16 +63,17 @@ class MygrateConfig(object):
             ret.register_module(table, mod)
         return ret
 
-    def get_mysql_connection_info(self):
+    def get_mysql_connection_info(self, section='mysql'):
         ret = {}
         mapping = {'host': 'host',
                    'port': 'port',
                    'user': 'user',
                    'passwd': 'password',
+                   'db': 'database',
                    'unix_socket': 'unix_socket'}
         for key, value in mapping.items():
             try:
-                ret[key] = self.parser.get('mysql', value)
+                ret[key] = self.parser.get(section, value)
             except (NoSectionError, NoOptionError):
                 pass
         return ret
