@@ -262,18 +262,22 @@ class QueryParser(object):
         :param line: The line to process.
 
         """
+        registered_tables = self.callbacks.get_registered_tables()
         if line.startswith('INSERT'):
             self._handle_completion()
-            self.current = InsertQuery(line, self.callbacks, self.column_names,
-                                       self.char_sets)
+            query = InsertQuery(line, self.callbacks, self.column_names,
+                                self.char_sets)
+            self.current = query if query.table in registered_tables else None
         elif line.startswith('UPDATE'):
             self._handle_completion()
-            self.current = UpdateQuery(line, self.callbacks, self.column_names,
-                                       self.char_sets)
+            query = UpdateQuery(line, self.callbacks, self.column_names,
+                                self.char_sets)
+            self.current = query if query.table in registered_tables else None
         elif line.startswith('DELETE'):
             self._handle_completion()
-            self.current = DeleteQuery(line, self.callbacks, self.column_names,
-                                       self.char_sets)
+            query = DeleteQuery(line, self.callbacks, self.column_names,
+                                self.char_sets)
+            self.current = query if query.table in registered_tables else None
         elif self.current:
             self.current.parse(line)
 
