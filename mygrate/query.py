@@ -104,15 +104,19 @@ row.
 Configuration for %prog is done with configuration files. This is either
 /etc/mygrate.conf, ~/.mygrate.conf, or an alternative specified by the
 MYGRATE_CONFIG environment variable.
+
+If no tables are given in the command-line arguments, all tables that have
+registered callbacks are queried.
 """
-    usage = 'usage: %prog [options] <database>.<table> ...'
+    usage = 'usage: %prog [options] [<database>.<table> ...]'
     op = optparse.OptionParser(usage=usage, description=description)
     options, requested_tables = op.parse_args()
-    if not requested_tables:
-        op.error('Must supply at least one database and table.')
 
     mysql_info = cfg.get_mysql_connection_info()
     callbacks = cfg.get_callbacks()
+
+    if not requested_tables:
+        requested_tables = callbacks.get_registered_tables()
 
     query = InitialQuery(mysql_info, callbacks)
     for table in requested_tables:
