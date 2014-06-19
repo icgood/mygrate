@@ -36,6 +36,7 @@ class MygrateConfig(object):
 
     def __init__(self):
         self.parser = SafeConfigParser()
+        self.parser.optionxform = str
 
         fnames = self._get_paths()
         if not self.parser.read(fnames):
