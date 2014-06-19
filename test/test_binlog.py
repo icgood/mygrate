@@ -88,8 +88,11 @@ class TestQueryParsing(MoxTestBase):
 
     def test_queryparser(self):
         callbacks = self.mox.CreateMockAnything()
+        callbacks.get_registered_tables().MultipleTimes().AndReturn(['testdb.testtable'])
         callbacks.execute('testdb.testtable', 'INSERT', {'one': 'asdf', 'two': None})
+        callbacks.get_registered_tables().MultipleTimes().AndReturn(['testdb.testtable'])
         callbacks.execute('testdb.testtable', 'UPDATE', {'one': 'jkl', 'two': None}, {'one': 'asdf', 'two': None})
+        callbacks.get_registered_tables().MultipleTimes().AndReturn(['testdb.testtable'])
         callbacks.execute('testdb.testtable', 'DELETE', {'one': 'asdf', 'two': None})
         self.mox.ReplayAll()
         qp = QueryParser(callbacks, {'testdb.testtable': ['one', 'two']}, {})
@@ -172,6 +175,7 @@ class TestBinlogParser(MoxTestBase):
                          stdin=subprocess.PIPE, stdout=subprocess.PIPE).AndReturn(proc)
         proc.stdin.close()
         callbacks = self.mox.CreateMockAnything()
+        callbacks.get_registered_tables().MultipleTimes().AndReturn(['testdb.testtable'])
         callbacks.execute('testdb.testtable', 'INSERT', {'one': 'asdf', 'two': None})
         proc.wait()
         self.mox.ReplayAll()
