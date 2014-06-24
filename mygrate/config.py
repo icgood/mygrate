@@ -62,7 +62,8 @@ class MygrateConfig(object):
         func = getattr(mod, attr_name)
         func(callbacks, self)
 
-    def get_mysql_connection_info(self):
+    def get_mysql_connection_info(self, section=None):
+        section = section or self.section
         ret = {}
         mapping = {'host': 'host',
                    'port': 'port',
@@ -72,7 +73,7 @@ class MygrateConfig(object):
                    'unix_socket': 'unix_socket'}
         for key, value in mapping.items():
             try:
-                ret[key] = self.parser.get(self.section, value)
+                ret[key] = self.parser.get(section, value)
             except (NoSectionError, NoOptionError):
                 pass
         return ret
