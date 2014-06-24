@@ -60,7 +60,7 @@ class MygrateConfig(object):
         mod_name, attr_name = entry_point.rsplit(':', 1)
         mod = __import__(mod_name)
         func = getattr(mod, attr_name)
-        func(callbacks, self.parser)
+        func(callbacks, self)
 
     def get_mysql_connection_info(self):
         ret = {}
