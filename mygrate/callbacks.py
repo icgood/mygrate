@@ -38,9 +38,6 @@ class MygrateCallbacks(object):
         self.callbacks = {}
 
     def get_registered_tables(self):
-        """Returns a list of tables for which callbacks have been registered.
-
-        """
         return self.callbacks.keys()
 
     def register(self, table, action, callback):
@@ -55,35 +52,7 @@ class MygrateCallbacks(object):
         self.callbacks.setdefault(table, {})
         self.callbacks[table][action] = callback
 
-    def register_module(self, table, module):
-        """Registers a module containing all the action callbacks for a table.
-
-        :param table: The table the callbacks should apply to.
-        :param module: A module (or other object) containing "INSERT",
-                       "UPDATE", or "DELETE" attributes that correspond to the
-                       callbacks that should be executed.
-
-        """
-        self.callbacks.setdefault(table, {})
-        if hasattr(module, 'INSERT'):
-            self.callbacks[table]['INSERT'] = module.INSERT
-        if hasattr(module, 'UPDATE'):
-            self.callbacks[table]['UPDATE'] = module.UPDATE
-        if hasattr(module, 'DELETE'):
-            self.callbacks[table]['DELETE'] = module.DELETE
-
     def execute(self, table, action, *args, **kwargs):
-        """Executes the callback registered to the given table and action. If
-        no callback has been registered, nothing is executed.
-
-        :param table: The table to execute the callback for. This table is
-                      passed in as the first positional argument to the
-                      callback.
-        :param action: The action to execute the callback for.
-        :param args: The positional arguments to pass in to the callback.
-        :param kwargs: The keyword arguments to pass in to the callback.
-
-        """
         if table not in self.callbacks:
             return
         if action not in self.callbacks[table]:

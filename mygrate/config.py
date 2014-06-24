@@ -24,7 +24,6 @@ import os.path
 from ConfigParser import SafeConfigParser, NoSectionError, NoOptionError
 
 from .exceptions import MygrateError
-from .callbacks import MygrateCallbacks
 
 
 class MygrateConfigError(MygrateError):
@@ -34,7 +33,8 @@ class MygrateConfigError(MygrateError):
 
 class MygrateConfig(object):
 
-    def __init__(self):
+    def __init__(self, section='mygrate'):
+        self.section = section
         self.parser = SafeConfigParser()
         self.parser.optionxform = str
 
@@ -51,20 +51,18 @@ class MygrateConfig(object):
             global_config = '/etc/mygrate.conf'
             return [home_config, global_config]
 
-    def get_callbacks(self):
+    def call_entry_point(self, callbacks):
         try:
-            section = self.parser.options('callbacks')
-        except (NoSectionError):
-            msg = 'Configuration section `callbacks` required.'
+            entry_point = self.parser.get(self.section, 'entry_point')
+        except (NoSectionError, NoOptionError):
+            msg = 'Please specify entry_point in configuration'
             raise MygrateConfigError(msg)
-        ret = MygrateCallbacks()
-        for table in section:
-            mod_name = self.parser.get('callbacks', table)
-            mod = __import__(mod_name)
-            ret.register_module(table, mod)
-        return ret
+        mod_name, attr_name = entry_point.rsplit(':', 1)
+        mod = __import__(mod_name)
+        func = getattr(mod, attr_name)
+        func(callbacks, self.parser)
 
-    def get_mysql_connection_info(self, section='mysql'):
+    def get_mysql_connection_info(self):
         ret = {}
         mapping = {'host': 'host',
                    'port': 'port',
@@ -74,27 +72,27 @@ class MygrateConfig(object):
                    'unix_socket': 'unix_socket'}
         for key, value in mapping.items():
             try:
-                ret[key] = self.parser.get(section, value)
+                ret[key] = self.parser.get(self.section, value)
             except (NoSectionError, NoOptionError):
                 pass
         return ret
 
     def get_mysql_binlog_info(self):
         try:
-            index_file = self.parser.get('binlog', 'index_file')
+            index_file = self.parser.get(self.section, 'index_file')
         except (NoSectionError, NoOptionError):
             index_file = '/var/lib/mysql/mysql-bin.index'
         if not os.path.exists(index_file):
             raise MygrateConfigError('Invalid binlog index file: '+index_file)
         try:
-            delay = self.parser.getfloat('binlog', 'tracking_delay')
+            delay = self.parser.getfloat(self.section, 'tracking_delay')
         except (NoSectionError, NoOptionError):
             delay = 1.0
         return index_file, float(delay)
 
     def get_tracking_dir(self):
         try:
-            tracking_dir = self.parser.get('binlog', 'tracking_dir')
+            tracking_dir = self.parser.get(self.section, 'tracking_dir')
         except (NoSectionError, NoOptionError):
             tracking_dir = os.path.expanduser('~/.binlog-tracking')
             try:

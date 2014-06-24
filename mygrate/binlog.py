@@ -538,8 +538,7 @@ MYGRATE_CONFIG environment variable.
 
     binlog_index, tracking_delay = cfg.get_mysql_binlog_info()
     tracking_dir = cfg.get_tracking_dir()
-    callbacks = cfg.get_callbacks()
-    parser = BinlogParser(binlog_index, tracking_dir, callbacks)
+    parser = BinlogParser(binlog_index, tracking_dir, None)
     binlogs = parser.read_index()
     for binlog in binlogs:
         parser.set_binlogpos_at_end(binlog)
@@ -551,6 +550,7 @@ def main():
 
     """
     from .config import cfg
+    from .callbacks import MygrateCallbacks
 
     description = """\
 This program follows changes in the MySQL binlog, producing job tasks for each
@@ -564,9 +564,11 @@ MYGRATE_CONFIG environment variable.
     op = optparse.OptionParser(description=description)
     op.parse_args()
 
+    callbacks = MygrateCallbacks()
     tracking_dir = cfg.get_tracking_dir()
     binlog_index, tracking_delay = cfg.get_mysql_binlog_info()
-    callbacks = cfg.get_callbacks()
+    cfg.call_entry_point(callbacks)
+
     parser = BinlogParser(binlog_index, tracking_dir, callbacks)
 
     def graceful_quit(sig, frame):
