@@ -549,9 +549,6 @@ def main():
     `mygrate-binlog` command.
 
     """
-    from .config import cfg
-    from .callbacks import MygrateCallbacks
-
     description = """\
 This program follows changes in the MySQL binlog, producing job tasks for each
 change. It is intended to be long-running, and will briefly pause after
@@ -563,6 +560,9 @@ MYGRATE_CONFIG environment variable.
 """
     op = optparse.OptionParser(description=description)
     op.parse_args()
+
+    from .config import cfg
+    from .callbacks import MygrateCallbacks
 
     callbacks = MygrateCallbacks()
     tracking_dir = cfg.get_tracking_dir()

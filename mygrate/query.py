@@ -95,9 +95,6 @@ class InitialQuery(object):
 
 
 def main():
-    from .config import cfg
-    from .callbacks import MygrateCallbacks
-
     description = """\
 This program attempts to import an entire table by creating job tasks for each
 row.
@@ -112,6 +109,9 @@ registered callbacks are queried.
     usage = 'usage: %prog [options] [<database>.<table> ...]'
     op = optparse.OptionParser(usage=usage, description=description)
     options, requested_tables = op.parse_args()
+
+    from .config import cfg
+    from .callbacks import MygrateCallbacks
 
     callbacks = MygrateCallbacks()
     mysql_info = cfg.get_mysql_connection_info()
