@@ -23,7 +23,7 @@ from setuptools import setup, find_packages
 
 
 setup(name='mygrate',
-      version='0.4',
+      version='0.5',
       author='Ian Good',
       author_email='ian.good@rackspace.com',
       description='Facilitates the migration of data from MySQL or MariaDB with no downtime.',
