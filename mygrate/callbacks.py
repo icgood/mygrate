@@ -36,9 +36,28 @@ class MygrateCallbacks(object):
 
     def __init__(self):
         self.callbacks = {}
+        self.error_handler = self._default_error_handler
+
+    def _default_error_handler(self, table, action, args, kwargs):
+        raise
 
     def get_registered_tables(self):
         return self.callbacks.keys()
+
+    def register_error_handler(self, handler):
+        """Registers an error handler for all registered callbacks. When
+        execution of a callback results in an exception, ``handler`` is called
+        with four arguments: the table, the action, a tuple of positional
+        arguments, and a dict of keyword arguments.
+
+        The error handler will be called within scope of the original
+        exception, so ``raise`` may be used to propagate the exception and
+        :func:`sys.exc_info` will return information about it.
+
+        :param handler: The function to handle callback exceptions.
+
+        """
+        self.error_handler = handler
 
     def register(self, table, action, callback):
         """Registers a callback for a single action on a given table.
@@ -58,7 +77,10 @@ class MygrateCallbacks(object):
         if action not in self.callbacks[table]:
             return
         callback = self.callbacks[table][action]
-        callback(table, *args, **kwargs)
+        try:
+            callback(table, *args, **kwargs)
+        except Exception:
+            self.error_handler(table, action, args, kwargs)
 
 
 # vim:et:fdm=marker:sts=4:sw=4:ts=4
