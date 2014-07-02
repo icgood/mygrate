@@ -440,7 +440,7 @@ AND `T`.`TABLE_NAME` = %s""", (db, table))
         pos_file = self.build_pos_file(binlog)
 
         last_position = self.read_position(pos_file)
-        self.log.info('processing {0} from {1}'.format(binlog, last_position)
+        self.log.info('processing {0} from {1}'.format(binlog, last_position))
         writepos = open(pos_file, 'w')
         self.write_position(writepos, last_position)
 
