@@ -6,7 +6,7 @@ import re
 import signal
 import subprocess
 import optparse
-import traceback
+import logging
 import glob
 import time
 from datetime import datetime
@@ -305,6 +305,7 @@ class BinlogParser(object):
         self.column_names = column_names or {}
         self.char_sets = char_sets or {}
         self.binlog_mtimes = {}
+        self.log = logging.getLogger('mygrate.binlog')
 
     def _load_one_table_names(self, conn, db, table):
         cur = conn.cursor()
@@ -439,7 +440,7 @@ AND `T`.`TABLE_NAME` = %s""", (db, table))
         pos_file = self.build_pos_file(binlog)
 
         last_position = self.read_position(pos_file)
-        print 'processing', binlog, 'from', last_position
+        self.log.info('processing {0} from {1}'.format(binlog, last_position)
         writepos = open(pos_file, 'w')
         self.write_position(writepos, last_position)
 
@@ -463,7 +464,7 @@ AND `T`.`TABLE_NAME` = %s""", (db, table))
             else:
                 p.finish()
         except Exception:
-            traceback.print_exc()
+            self.log.exception('Unhandled exception')
         finally:
             writepos.close()
             proc.wait()
@@ -496,7 +497,8 @@ AND `T`.`TABLE_NAME` = %s""", (db, table))
         binlog_size = os.path.getsize(binlog)
         with open(pos_file, 'w') as f:
             self.write_position(f, str(binlog_size))
-        print 'changing', pos_file, 'from', old_pos, 'to', binlog_size
+        self.log.info('changing {0} from {1} to {2}'.format(
+            pos_file, old_pos, binlog_size))
 
 
 def confirm_skip_existing():

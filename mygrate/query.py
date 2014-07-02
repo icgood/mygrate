@@ -23,6 +23,7 @@
 import os
 import os.path
 import sys
+import logging
 import optparse
 import cPickle
 import MySQLdb
@@ -39,6 +40,7 @@ class InitialQuery(object):
         self.mysql_info = mysql_info
         self.callbacks = callbacks
         self.action = action
+        self.log = logging.getLogger('mygrate.query')
 
     def run_callback(self, table, cols):
         """Executes the INSERT callback for the given table.
@@ -89,6 +91,8 @@ class InitialQuery(object):
                     break
                 for row in rows:
                     self.run_callback(full_table, row)
+        except Exception:
+            self.log.exception('Unhandled exception')
         finally:
             cur.close()
             conn.close()
