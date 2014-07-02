@@ -58,7 +58,7 @@ class MygrateConfig(object):
             msg = 'Please specify entry_point in configuration'
             raise MygrateConfigError(msg)
         mod_name, attr_name = entry_point.rsplit(':', 1)
-        mod = __import__(mod_name)
+        mod = __import__(mod_name, fromlist=[attr_name])
         func = getattr(mod, attr_name)
         func(callbacks, self)
 
