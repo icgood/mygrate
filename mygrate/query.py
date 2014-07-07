@@ -51,29 +51,27 @@ class InitialQuery(object):
         """
         self.callbacks.execute(table, self.action, cols)
 
-    def get_connection(self, db, streaming=True):
+    def get_connection(self, db):
         """Creates and returns a connection to the MySQL server and selects the
         given database.
 
         :param db: The database name to select after connection.
-        :param streaming: Whether or not a streaming MySQL cursor should be
-                          used, for large data sets.
         :returns: A MySQL connection object.
 
         """
         kwargs = self.mysql_info.copy()
         kwargs['db'] = db
         kwargs['charset'] = 'utf8'
-        if streaming:
-            kwargs['cursorclass'] = MySQLdb.cursors.SSDictCursor
-        else:
-            kwargs['cursorclass'] = MySQLdb.cursors.DictCursor
         conn = MySQLdb.connect(**kwargs)
         return conn
 
     def process_table(self, full_table):
-        """Does a streaming, full-table SELECT on the requested table to
-        retrieve every row. Rows are then passed to `run_callback()`.
+        """Runs SELECT queries against the table until the entire table
+        contents have been processed. Rows are then passed to `run_callback()`.
+
+        The table should not be receiving updates during the execution of this
+        method. Any modifications to the table may disrupt the process and
+        result in lost or duplicate data.
 
         :param full_table: The database and table names, separated by a period,
                            as given on the command line.
@@ -82,13 +80,16 @@ class InitialQuery(object):
         db, table = full_table.split('.')
         conn = self.get_connection(db)
         cur = conn.cursor()
+        offset = 0
         try:
-            sql = 'SELECT * FROM `{0}`'.format(table)
-            cur.execute(sql)
             while True:
-                rows = cur.fetchmany(1000)
+                sql = """SELECT * FROM `{0}`
+                         LIMIT {1}, 100""".format(table, offset)
+                cur.execute(sql)
+                rows = cur.fetchall()
                 if not rows:
                     break
+                offset += len(rows)
                 for row in rows:
                     self.run_callback(full_table, row)
         except Exception:
