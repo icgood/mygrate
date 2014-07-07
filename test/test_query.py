@@ -21,7 +21,8 @@ class TestInitialQuery(MoxTestBase):
     def test_get_connect(self):
         self.mox.StubOutWithMock(MySQLdb, 'connect')
         MySQLdb.connect(host='testhost', user='testuser', passwd='testpass',
-                        db='testdb', charset='utf8').AndReturn(13)
+                        db='testdb', charset='utf8',
+                        cursorclass=MySQLdb.cursors.DictCursor).AndReturn(13)
         options = {'host': 'testhost', 'user': 'testuser', 'passwd': 'testpass'}
         self.mox.ReplayAll()
         importer = InitialQuery(options, None, None)

@@ -62,6 +62,7 @@ class InitialQuery(object):
         kwargs = self.mysql_info.copy()
         kwargs['db'] = db
         kwargs['charset'] = 'utf8'
+        kwargs['cursorclass'] = MySQLdb.cursors.DictCursor
         conn = MySQLdb.connect(**kwargs)
         return conn
 
