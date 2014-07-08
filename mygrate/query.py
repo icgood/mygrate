@@ -36,10 +36,12 @@ class InitialQuery(object):
 
     """
 
-    def __init__(self, mysql_info, callbacks, action='INSERT'):
+    def __init__(self, mysql_info, callbacks, action='INSERT',
+                 streaming=False):
         self.mysql_info = mysql_info
         self.callbacks = callbacks
         self.action = action
+        self.streaming = streaming
         self.log = logging.getLogger('mygrate.query')
 
     def run_callback(self, table, cols):
@@ -62,7 +64,10 @@ class InitialQuery(object):
         kwargs = self.mysql_info.copy()
         kwargs['db'] = db
         kwargs['charset'] = 'utf8'
-        kwargs['cursorclass'] = MySQLdb.cursors.DictCursor
+        if self.streaming:
+            kwargs['cursorclass'] = MySQLdb.cursors.SSDictCursor
+        else:
+            kwargs['cursorclass'] = MySQLdb.cursors.DictCursor
         conn = MySQLdb.connect(**kwargs)
         return conn
 
@@ -81,18 +86,11 @@ class InitialQuery(object):
         db, table = full_table.split('.')
         conn = self.get_connection(db)
         cur = conn.cursor()
-        offset = 0
         try:
-            while True:
-                sql = """SELECT * FROM `{0}`
-                         LIMIT {1}, 100""".format(table, offset)
-                cur.execute(sql)
-                rows = cur.fetchall()
-                if not rows:
-                    break
-                offset += len(rows)
-                for row in rows:
-                    self.run_callback(full_table, row)
+            sql = """SELECT * FROM `{0}`""".format(table)
+            cur.execute(sql)
+            for row in cur:
+                self.run_callback(full_table, row)
         except Exception:
             self.log.exception('Unhandled exception')
         finally:
@@ -114,6 +112,8 @@ registered callbacks are queried.
 """
     usage = 'usage: %prog [options] [<database>.<table> ...]'
     op = optparse.OptionParser(usage=usage, description=description)
+    op.add_option('-s', '--stream', action='store_true', default=False,
+                  help='Stream the query results from the MySQL server.')
     options, requested_tables = op.parse_args()
 
     from .config import cfg
@@ -126,7 +126,8 @@ registered callbacks are queried.
     if not requested_tables:
         requested_tables = callbacks.get_registered_tables()
 
-    query = InitialQuery(mysql_info, callbacks)
+    query = InitialQuery(mysql_info, callbacks,
+                         streaming=options.stream)
     for table in requested_tables:
         query.process_table(table)
 

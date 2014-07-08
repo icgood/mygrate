@@ -70,7 +70,8 @@ class MygrateConfig(object):
                    'user': 'user',
                    'passwd': 'password',
                    'db': 'database',
-                   'unix_socket': 'unix_socket'}
+                   'unix_socket': 'unix_socket',
+                   'charset': 'charset'}
         for key, value in mapping.items():
             try:
                 ret[key] = self.parser.get(section, value)

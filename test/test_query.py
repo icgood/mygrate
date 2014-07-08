@@ -23,7 +23,9 @@ class TestInitialQuery(MoxTestBase):
         MySQLdb.connect(host='testhost', user='testuser', passwd='testpass',
                         db='testdb', charset='utf8',
                         cursorclass=MySQLdb.cursors.DictCursor).AndReturn(13)
-        options = {'host': 'testhost', 'user': 'testuser', 'passwd': 'testpass'}
+        options = {'host': 'testhost',
+                   'user': 'testuser',
+                   'passwd': 'testpass'}
         self.mox.ReplayAll()
         importer = InitialQuery(options, None, None)
         self.assertEqual(13, importer.get_connection('testdb'))
@@ -37,10 +39,10 @@ class TestInitialQuery(MoxTestBase):
         cur = self.mox.CreateMockAnything()
         conn.cursor().AndReturn(cur)
         cur.execute(IgnoreArg())
-        cur.fetchall().AndReturn([{'one': 1, 'two': 2}, {'one': 3, 'two': 4}])
+        cur.__iter__().AndReturn(
+            iter([{'one': 1, 'two': 2}, {'one': 3, 'two': 4}]))
         importer.run_callback('testdb.testtable', {'one': 1, 'two': 2})
         importer.run_callback('testdb.testtable', {'one': 3, 'two': 4})
-        cur.fetchall().AndReturn([])
         cur.close()
         conn.close()
         self.mox.ReplayAll()
