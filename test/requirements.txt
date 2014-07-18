@@ -1,0 +1,5 @@
+nose
+mox
+pep8
+coverage
+nosexcover
