@@ -1,0 +1,72 @@
+#!/bin/bash
+
+# mygrate-binlog - Keep databases in sync with latest updates
+#
+# chkconfig: - 85 15
+# description: Keep databases in sync with latest updates
+# processname: mygrate-binlog
+
+# author: Ian Good
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+
+DESC=mygrate-binlog
+WORKER_BIN=/usr/bin/mygrate-binlog
+DAEMON_OPTS=""
+
+[ -f /etc/sysconfig/mygrate-binlog ] && . /etc/sysconfig/mygrate-binlog
+
+lockfile=/var/lock/subsys/mygrate-binlog
+
+start () {
+    echo -n "Starting $DESC: "
+    daemon $WORKER_BIN --daemon $DAEMON_OPTS
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && touch $lockfile
+    return $retval
+}
+
+stop () {
+    echo -n "Stopping $DESC: "
+    killproc $WORKER_BIN
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && rm -f $lockfile
+    return $retval
+}
+
+rh_status () {
+    status $WORKER_BIN
+}
+
+rh_status_q() {
+    rh_status >/dev/null 2>&1
+}
+
+case "$1" in
+    start)
+        rh_status_q && exit 0
+        $1
+        ;;
+    stop)
+        rh_status_q || exit 0
+        $1
+        ;;
+    restart)
+        rh_status_q && stop
+        start
+        ;;
+    status)
+        rh_status
+        ;;
+    *)  
+        echo "Usage: $0 {start|stop|restart|status}" >&2
+        exit 2
+        ;;
+esac
+
+exit 0
