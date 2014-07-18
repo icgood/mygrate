@@ -561,10 +561,15 @@ Configuration for %prog is done with configuration files. This is either
 MYGRATE_CONFIG environment variable.
 """
     op = optparse.OptionParser(description=description)
-    op.parse_args()
+    op.add_option('-d', '--daemon', action='store_true',
+                  help='Daemonize the process before binlog tracking begins')
+    op.add_option('-p', '--pid-file', metavar='FILE',
+                  help='Write the process ID to FILE')
+    options, _ = op.parse_args()
 
     from .config import cfg
     from .callbacks import MygrateCallbacks
+    from .daemon import daemonize, redirect_stdio, PidFile
 
     callbacks = MygrateCallbacks()
     tracking_dir = cfg.get_tracking_dir()
@@ -583,10 +588,15 @@ MYGRATE_CONFIG environment variable.
     parser.load_column_names(mysql_info)
     parser.load_character_sets(mysql_info)
 
-    while not parser.done:
-        parser.process_all_binlogs()
-        if not parser.done:
-            sleep(tracking_delay)
+    if options.daemon:
+        daemonize()
+        redirect_stdio()
+
+    with PidFile(options.pid_file):
+        while not parser.done:
+            parser.process_all_binlogs()
+            if not parser.done:
+                sleep(tracking_delay)
 
 
 if __name__ == '__main__':
