@@ -7,7 +7,6 @@ import signal
 import subprocess
 import optparse
 import logging
-import glob
 import time
 from datetime import datetime
 from ast import literal_eval
@@ -530,7 +529,7 @@ Configuration for %prog is done with configuration files. This is either
 /etc/mygrate.ini, ~/.mygrate.ini, or an alternative specified by the
 MYGRATE_CONFIG environment variable.
 """
-    op = optparse.OptionParser()
+    op = optparse.OptionParser(description=description)
     op.add_option('-f', '--force', action='store_true', default=False,
                   help='Do not ask for confirmation, just do it.')
     options, extra = op.parse_args()

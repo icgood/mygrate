@@ -20,15 +20,6 @@
 #
 
 
-import os
-import os.path
-import sys
-import optparse
-import cPickle
-import MySQLdb
-import MySQLdb.cursors
-
-
 class MygrateCallbacks(object):
     """Manages registration of callbacks for actions against tables.
 

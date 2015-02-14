@@ -1,10 +1,8 @@
 
-import os.path
-import cPickle
 import MySQLdb
 import MySQLdb.cursors
 
-from mox import MoxTestBase, IsA, IgnoreArg
+from mox import MoxTestBase, IgnoreArg
 
 from mygrate.query import InitialQuery
 

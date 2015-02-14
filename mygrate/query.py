@@ -20,12 +20,8 @@
 #
 
 
-import os
-import os.path
-import sys
 import logging
 import optparse
-import cPickle
 import MySQLdb
 import MySQLdb.cursors
 

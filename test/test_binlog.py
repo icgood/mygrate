@@ -1,4 +1,6 @@
 
+from __future__ import absolute_import
+
 import os
 import os.path
 import tempfile
@@ -6,10 +8,10 @@ import shutil
 import subprocess
 from datetime import datetime
 
-from mox import MoxTestBase, IsA
+from mox import MoxTestBase
 
-from mygrate.binlog import (QueryBase, InsertQuery, UpdateQuery,
-                            DeleteQuery, QueryParser, BinlogParser)
+from mygrate.binlog import (InsertQuery, UpdateQuery, DeleteQuery,
+                            QueryParser, BinlogParser)
 
 
 class TestQueryParsing(MoxTestBase):
@@ -32,15 +34,18 @@ class TestQueryParsing(MoxTestBase):
         self.assertEqual('as\\x00df', q._parse_value("'as\\x00df'", None))
         self.assertEqual(9, q._parse_value('9', None))
         self.assertEqual(None, q._parse_value('NULL', None))
-        self.assertEqual(datetime(2013, 1, 1, 13, 30), q._parse_value('2013-01-01 13:30:00', None))
+        self.assertEqual(datetime(2013, 1, 1, 13, 30),
+                         q._parse_value('2013-01-01 13:30:00', None))
         self.assertEqual(65531, q._parse_value('-5 (65531)', None))
-        self.assertEqual('test', q._parse_value("b'01110100011001010111001101110100'", None))
+        self.assertEqual('test', q._parse_value(
+            "b'01110100011001010111001101110100'", None))
         self.assertEqual(None, q._parse_value('invalid', None))
 
     def test_querybase_parse_value_encoding(self):
         q = InsertQuery('INSERT INTO `testdb`.`testtable`', None, None, {})
         self.assertEqual(u'asdf', q._parse_value("'asdf'", 'latin1'))
-        self.assertEqual('10\xc3\xb72=Five', q._parse_value("'10\xf72=Five'", 'latin1').encode('utf8'))
+        self.assertEqual('10\xc3\xb72=Five', q._parse_value(
+            "'10\xf72=Five'", 'latin1').encode('utf8'))
 
     def test_querybase_parse(self):
         q = UpdateQuery('UPDATE `testdb`.`testtable`', None, None, {})
@@ -55,9 +60,11 @@ class TestQueryParsing(MoxTestBase):
 
     def test_insertquery_finish(self):
         callbacks = self.mox.CreateMockAnything()
-        callbacks.execute('testdb.testtable', 'INSERT', {'one': 'asdf', 'two': None})
+        callbacks.execute('testdb.testtable', 'INSERT',
+                          {'one': 'asdf', 'two': None})
         self.mox.ReplayAll()
-        q = InsertQuery('INSERT INTO `testdb`.`testtable`', callbacks, {'testdb.testtable': ['one', 'two']}, {})
+        q = InsertQuery('INSERT INTO `testdb`.`testtable`', callbacks,
+                        {'testdb.testtable': ['one', 'two']}, {})
         q.parse("SET")
         q.parse("  @1='asdf'")
         q.parse("  @2=NULL")
@@ -65,9 +72,12 @@ class TestQueryParsing(MoxTestBase):
 
     def test_updatequery_finish(self):
         callbacks = self.mox.CreateMockAnything()
-        callbacks.execute('testdb.testtable', 'UPDATE', {'one': 'jkl', 'two': None}, {'one': 'asdf', 'two': None})
+        callbacks.execute('testdb.testtable', 'UPDATE',
+                          {'one': 'jkl', 'two': None},
+                          {'one': 'asdf', 'two': None})
         self.mox.ReplayAll()
-        q = UpdateQuery('UPDATE `testdb`.`testtable`', callbacks, {'testdb.testtable': ['one', 'two']}, {})
+        q = UpdateQuery('UPDATE `testdb`.`testtable`', callbacks,
+                        {'testdb.testtable': ['one', 'two']}, {})
         q.parse("SET")
         q.parse("  @1='asdf'")
         q.parse("  @2=NULL")
@@ -78,9 +88,11 @@ class TestQueryParsing(MoxTestBase):
 
     def test_deletequery_finish(self):
         callbacks = self.mox.CreateMockAnything()
-        callbacks.execute('testdb.testtable', 'DELETE', {'one': 'asdf', 'two': None})
+        callbacks.execute('testdb.testtable', 'DELETE',
+                          {'one': 'asdf', 'two': None})
         self.mox.ReplayAll()
-        q = DeleteQuery('DELETE FROM `testdb`.`testtable`', callbacks, {'testdb.testtable': ['one', 'two']}, {})
+        q = DeleteQuery('DELETE FROM `testdb`.`testtable`', callbacks,
+                        {'testdb.testtable': ['one', 'two']}, {})
         q.parse("WHERE")
         q.parse("  @1='asdf'")
         q.parse("  @2=NULL")
@@ -88,12 +100,19 @@ class TestQueryParsing(MoxTestBase):
 
     def test_queryparser(self):
         callbacks = self.mox.CreateMockAnything()
-        callbacks.get_registered_tables().MultipleTimes().AndReturn(['testdb.testtable'])
-        callbacks.execute('testdb.testtable', 'INSERT', {'one': 'asdf', 'two': None})
-        callbacks.get_registered_tables().MultipleTimes().AndReturn(['testdb.testtable'])
-        callbacks.execute('testdb.testtable', 'UPDATE', {'one': 'jkl', 'two': None}, {'one': 'asdf', 'two': None})
-        callbacks.get_registered_tables().MultipleTimes().AndReturn(['testdb.testtable'])
-        callbacks.execute('testdb.testtable', 'DELETE', {'one': 'asdf', 'two': None})
+        callbacks.get_registered_tables(). \
+            MultipleTimes().AndReturn(['testdb.testtable'])
+        callbacks.execute('testdb.testtable', 'INSERT',
+                          {'one': 'asdf', 'two': None})
+        callbacks.get_registered_tables(). \
+            MultipleTimes().AndReturn(['testdb.testtable'])
+        callbacks.execute('testdb.testtable', 'UPDATE',
+                          {'one': 'jkl', 'two': None},
+                          {'one': 'asdf', 'two': None})
+        callbacks.get_registered_tables(). \
+            MultipleTimes().AndReturn(['testdb.testtable'])
+        callbacks.execute('testdb.testtable', 'DELETE',
+                          {'one': 'asdf', 'two': None})
         self.mox.ReplayAll()
         qp = QueryParser(callbacks, {'testdb.testtable': ['one', 'two']}, {})
         qp.parse("INSERT INTO `testdb`.`testtable`")
@@ -156,8 +175,10 @@ class TestBinlogParser(MoxTestBase):
 
     def test_build_pos_file(self):
         blp = BinlogParser(None, '/path/to/posdir', None, None)
-        self.assertEqual('/path/to/posdir/binlogpos.000005', blp.build_pos_file('/path/to/mysql-binlog.000005'))
-        self.assertEqual('/path/to/posdir/binlogpos.000001', blp.build_pos_file('/test/test.000001'))
+        self.assertEqual('/path/to/posdir/binlogpos.000005',
+                         blp.build_pos_file('/path/to/mysql-binlog.000005'))
+        self.assertEqual('/path/to/posdir/binlogpos.000001',
+                         blp.build_pos_file('/test/test.000001'))
 
     def test_process_binlog(self):
         pos_file = os.path.join(self.tmp_dir, 'binlogpos.000001')
@@ -171,15 +192,21 @@ class TestBinlogParser(MoxTestBase):
                        "###   @1='asdf'\n",
                        "###   @2=NULL\n",
                        "# at 4321\n"]
-        subprocess.Popen(['mysqlbinlog', '-v', '--base64-output=DECODE-ROWS', '/path/to/binlog.000001', '-j', '1234', '--set-charset=utf8'],
-                         stdin=subprocess.PIPE, stdout=subprocess.PIPE).AndReturn(proc)
+        subprocess.Popen(['mysqlbinlog', '-v', '--base64-output=DECODE-ROWS',
+                          '/path/to/binlog.000001', '-j', '1234',
+                          '--set-charset=utf8'],
+                         stdin=subprocess.PIPE,
+                         stdout=subprocess.PIPE).AndReturn(proc)
         proc.stdin.close()
         callbacks = self.mox.CreateMockAnything()
-        callbacks.get_registered_tables().MultipleTimes().AndReturn(['testdb.testtable'])
-        callbacks.execute('testdb.testtable', 'INSERT', {'one': 'asdf', 'two': None})
+        callbacks.get_registered_tables(). \
+            MultipleTimes().AndReturn(['testdb.testtable'])
+        callbacks.execute('testdb.testtable', 'INSERT',
+                          {'one': 'asdf', 'two': None})
         proc.wait()
         self.mox.ReplayAll()
-        blp = BinlogParser(None, self.tmp_dir, callbacks, {'testdb.testtable': ['one', 'two']})
+        blp = BinlogParser(None, self.tmp_dir, callbacks,
+                           {'testdb.testtable': ['one', 'two']})
         blp.process_binlog('/path/to/binlog.000001')
         self.assertEqual('4321', blp.read_position(pos_file))
 
@@ -202,7 +229,8 @@ class TestBinlogParser(MoxTestBase):
         with open(binlog_file, 'w') as f:
             f.write('x'*256)
         blp.set_binlogpos_at_end(binlog_file)
-        self.assertEqual('256', blp.read_position(os.path.join(self.tmp_dir, 'binlogpos.001')))
+        self.assertEqual('256', blp.read_position(
+            os.path.join(self.tmp_dir, 'binlogpos.001')))
 
 
 # vim:et:fdm=marker:sts=4:sw=4:ts=4
