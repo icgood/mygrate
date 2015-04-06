@@ -25,7 +25,7 @@ from setuptools import setup, find_packages
 setup(name='mygrate',
       version='0.7',
       author='Ian Good',
-      author_email='ian.good@rackspace.com',
+      author_email='icgood@gmail.com',
       description='Facilitates the migration of data from MySQL or MariaDB with no downtime.',
       license='MIT',
       url='https://github.com/icgood/mygrate',
