@@ -1,5 +1,4 @@
-nose
+pytest
+pytest-cov
 mox
 flake8
-coverage
-nosexcover
