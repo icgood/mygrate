@@ -26,15 +26,16 @@ setup(name='mygrate',
       version='0.7',
       author='Ian Good',
       author_email='icgood@gmail.com',
-      description='Facilitates the migration of data from MySQL or MariaDB with no downtime.',
+      description='Facilitates the migration of data from MySQL or MariaDB '
+                  'with no downtime.',
       license='MIT',
       url='https://github.com/icgood/mygrate',
       packages=find_packages(),
-      entry_points={'console_scripts': [
-              'mygrate-query = mygrate.query:main',
-              'mygrate-binlog = mygrate.binlog:main',
-              'mygrate-skip = mygrate.binlog:skip_existing'
-          ]},
+      entry_points={
+          'console_scripts': ['mygrate-query = mygrate.query:main',
+                              'mygrate-binlog = mygrate.binlog:main',
+                              'mygrate-skip = mygrate.binlog:skip_existing'],
+      },
       install_requires=['MySQL-python',
                         'bitstring'],
       classifiers=['Development Status :: 3 - Alpha',

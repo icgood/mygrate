@@ -19,9 +19,11 @@
 # THE SOFTWARE.
 #
 
+from __future__ import absolute_import
 
 import logging
 import optparse
+
 import MySQLdb
 import MySQLdb.cursors
 

@@ -19,6 +19,8 @@
 # THE SOFTWARE.
 #
 
+from __future__ import absolute_import
+
 
 class MygrateError(Exception):
     """Base class for all custom MyGrate errors."""

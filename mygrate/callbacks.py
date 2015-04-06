@@ -19,6 +19,8 @@
 # THE SOFTWARE.
 #
 
+from __future__ import absolute_import
+
 
 class MygrateCallbacks(object):
     """Manages registration of callbacks for actions against tables.
